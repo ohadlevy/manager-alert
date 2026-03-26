@@ -4,7 +4,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from .area_matcher import AreaReport
-from .city_names import format_city_short, get_region, is_known_city
+from .city_names import MAJOR_CITIES, get_region, is_known_city
 
 ISRAEL_TZ = timezone(timedelta(hours=3))
 
@@ -16,13 +16,6 @@ REGION_ORDER = [
     "Jerusalem Area",
     "Southern Israel",
 ]
-
-# Cities whose presence triggers "major cities" in severity
-MAJOR_CITIES = {
-    "תל אביב", "ירושלים", "חיפה", "באר שבע", "אשדוד", "אשקלון",
-    "רמת גן", "פתח תקווה", "ראשון לציון", "נתניה", "הרצליה",
-    "רעננה", "כפר סבא", "הוד השרון",
-}
 
 
 def _plural(n: int, word: str) -> str:
@@ -76,7 +69,7 @@ def build_report(
     if total_night > 0:
         night_areas = [r for r in area_reports if r.night_count > 0]
         night_cities = [
-            f"{format_city_short(r.area_name)} {r.night_count}x"
+            f"{r.area_name} {r.night_count}x"
             for r in sorted(night_areas, key=lambda r: r.night_count, reverse=True)[:6]
         ]
         lines.append("")
@@ -105,7 +98,7 @@ def build_report(
             continue
         region_areas = sorted(regions[region], key=lambda r: r.total_count, reverse=True)
         city_parts = [
-            f"{format_city_short(r.area_name)} {r.total_count}x"
+            f"{r.area_name} {r.total_count}x"
             for r in region_areas
         ]
         lines.append(f"*{region}*")

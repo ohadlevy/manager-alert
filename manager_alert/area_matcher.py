@@ -1,10 +1,8 @@
 """Group Pikud HaOref alert area names by base city.
 
-Handles compound oref names like "תל אביב - מרכז העיר" → "תל אביב".
+Handles compound oref names like "Tel Aviv - Center" → "Tel Aviv".
 """
 
-import re
-import unicodedata
 from dataclasses import dataclass, field
 
 from .oref_client import Alert
@@ -12,9 +10,9 @@ from .oref_client import Alert
 
 @dataclass
 class AreaReport:
-    """Aggregated alert info for a single matched area."""
-    area_name: str  # The subscriber's watched city name
-    oref_areas: set[str] = field(default_factory=set)  # Original oref area names matched
+    """Aggregated alert info for a single area."""
+    area_name: str
+    oref_areas: set[str] = field(default_factory=set)
     alerts: list[Alert] = field(default_factory=list)
     night_alerts: list[Alert] = field(default_factory=list)
 
@@ -41,25 +39,12 @@ class AreaReport:
         return (times[0].strftime("%H:%M"), times[-1].strftime("%H:%M"))
 
 
-def normalize(name: str) -> str:
-    """Normalize a Hebrew area name for matching."""
-    # Remove Hebrew niqqud (diacritics) U+0591 to U+05C7
-    name = re.sub(r"[\u0591-\u05C7]", "", name)
-    # NFC normalize
-    name = unicodedata.normalize("NFC", name)
-    # Collapse whitespace
-    name = re.sub(r"\s+", " ", name).strip()
-    return name
-
-
 def extract_city_prefix(oref_area: str) -> str:
     """Extract the city prefix from compound oref names.
 
-    "תל אביב - מרכז העיר" → "תל אביב"
-    "חיפה - כרמל ועיר תחתית" → "חיפה"
+    "Tel Aviv - Center" → "Tel Aviv"
+    "Haifa - Carmel" → "Haifa"
     """
     if " - " in oref_area:
         return oref_area.split(" - ")[0].strip()
     return oref_area
-
-

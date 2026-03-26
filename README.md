@@ -147,7 +147,6 @@ The container must run from an Israeli IP (oref API is geo-restricted).
 │                    └ POST → Slack       │
 │                                         │
 │  data/alerts.db        (24h history)    │
-│  data/subscribers.json (watchlist)      │
 └─────────────────────────────────────────┘
 ```
 
@@ -155,9 +154,7 @@ The container must run from an Israeli IP (oref API is geo-restricted).
 
 1. **Collector** polls the Pikud HaOref (Home Front Command) API every 10 minutes and stores alerts in SQLite. The API only keeps ~3h of history, so continuous polling builds a full 24h picture.
 
-2. **Report** reads the last 24h from SQLite, groups alerts by city, translates city names to English, highlights overnight alerts (22:00-07:00), and posts to Slack.
-
-3. **City names** are translated to English for the ~80 most common Israeli cities. Unknown cities stay in Hebrew.
+2. **Report** reads the last 24h from SQLite, groups alerts by city and region, highlights overnight alerts (22:00-07:00), and posts to Slack. The API provides English city names directly.
 
 ## Data Sources
 

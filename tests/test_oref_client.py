@@ -42,29 +42,29 @@ class TestParseHistoryResponse:
         data = [
             {
                 "alertDate": "2026-03-26 02:15:00",
-                "title": "ירי רקטות וטילים",
-                "data": "תל אביב - מרכז העיר",
+                "title": "Missiles",
+                "data": "Tel Aviv - Center",
                 "category": 1,
             }
         ]
         result = _parse_history_response(data)
         assert len(result) == 1
-        assert result[0]["area"] == "תל אביב - מרכז העיר"
+        assert result[0]["area"] == "Tel Aviv - Center"
         assert result[0]["category"] == 1
 
     def test_list_data_field(self):
         data = [
             {
                 "alertDate": "2026-03-26 02:15:00",
-                "title": "ירי רקטות וטילים",
-                "data": ["תל אביב", "רמת גן"],
+                "title": "Missiles",
+                "data": ["Tel Aviv", "Ramat Gan"],
                 "category": 1,
             }
         ]
         result = _parse_history_response(data)
         assert len(result) == 2
-        assert result[0]["area"] == "תל אביב"
-        assert result[1]["area"] == "רמת גן"
+        assert result[0]["area"] == "Tel Aviv"
+        assert result[1]["area"] == "Ramat Gan"
 
     def test_missing_date_skipped(self):
         data = [{"title": "test", "data": "somewhere", "category": 1}]
@@ -80,11 +80,11 @@ class TestParseHistoryResponse:
         data = [
             {
                 "alertDate": "26.03.2026 02:15:00",
-                "title": "ירי רקטות וטילים",
-                "data": "חיפה",
+                "title": "Missiles",
+                "data": "Haifa",
                 "category": 1,
             }
         ]
         result = _parse_history_response(data)
         assert len(result) == 1
-        assert result[0]["area"] == "חיפה"
+        assert result[0]["area"] == "Haifa"

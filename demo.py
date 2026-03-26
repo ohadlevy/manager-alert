@@ -45,24 +45,24 @@ def demo_quiet():
 
 def demo_daytime():
     reports = [
-        _area("תל אביב", [
-            _alert("תל אביב - מרכז", 10),
-            _alert("תל אביב - מרכז", 11),
-            _alert("תל אביב - דרום", 11, "UAV", 2),
+        _area("Tel Aviv", [
+            _alert("Tel Aviv - Center", 10),
+            _alert("Tel Aviv - Center", 11),
+            _alert("Tel Aviv - South", 11, "Hostile aircraft intrusion", 2),
         ]),
-        _area("חיפה", [
-            _alert("חיפה", 9),
-            _alert("חיפה", 10),
+        _area("Haifa", [
+            _alert("Haifa", 9),
+            _alert("Haifa", 10),
         ]),
-        _area("הרצליה", [
-            _alert("הרצליה", 10),
-            _alert("הרצליה", 11),
+        _area("Herzliya", [
+            _alert("Herzliya", 10),
+            _alert("Herzliya", 11),
         ]),
-        _area("נהריה", [
-            _alert("נהריה", 9),
+        _area("Nahariya", [
+            _alert("Nahariya", 9),
         ]),
-        _area("עכו", [
-            _alert("עכו", 9),
+        _area("Acre", [
+            _alert("Acre", 9),
         ]),
     ]
     return (
@@ -74,37 +74,37 @@ def demo_daytime():
 
 def demo_night():
     reports = [
-        _area("תל אביב", [
-            _alert("תל אביב - מרכז", 2),
-            _alert("תל אביב - מרכז", 3),
-            _alert("תל אביב - דרום", 3, "UAV", 2),
-            _alert("תל אביב - מרכז", 10),
-            _alert("תל אביב - דרום", 11),
+        _area("Tel Aviv", [
+            _alert("Tel Aviv - Center", 2),
+            _alert("Tel Aviv - Center", 3),
+            _alert("Tel Aviv - South", 3, "Hostile aircraft intrusion", 2),
+            _alert("Tel Aviv - Center", 10),
+            _alert("Tel Aviv - South", 11),
         ]),
-        _area("חיפה", [
-            _alert("חיפה", 1),
-            _alert("חיפה", 2),
-            _alert("חיפה", 3),
-            _alert("חיפה", 14),
+        _area("Haifa", [
+            _alert("Haifa", 1),
+            _alert("Haifa", 2),
+            _alert("Haifa", 3),
+            _alert("Haifa", 14),
         ]),
-        _area("אשדוד", [
-            _alert("אשדוד", 2),
-            _alert("אשדוד", 4),
-            _alert("אשדוד", 5),
+        _area("Ashdod", [
+            _alert("Ashdod", 2),
+            _alert("Ashdod", 4),
+            _alert("Ashdod", 5),
         ]),
-        _area("הרצליה", [
-            _alert("הרצליה", 10),
-            _alert("הרצליה", 11),
+        _area("Herzliya", [
+            _alert("Herzliya", 10),
+            _alert("Herzliya", 11),
         ]),
-        _area("נהריה", [
-            _alert("נהריה", 3),
-            _alert("נהריה", 9, "UAV", 2),
+        _area("Nahariya", [
+            _alert("Nahariya", 3),
+            _alert("Nahariya", 9, "Hostile aircraft intrusion", 2),
         ]),
-        _area("רמת גן", [
-            _alert("רמת גן", 2),
+        _area("Ramat Gan", [
+            _alert("Ramat Gan", 2),
         ]),
-        _area("עכו", [
-            _alert("עכו", 9),
+        _area("Acre", [
+            _alert("Acre", 9),
         ]),
     ]
     return (

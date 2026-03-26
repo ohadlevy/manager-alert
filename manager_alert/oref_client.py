@@ -13,37 +13,11 @@ ISRAEL_TZ = timezone(timedelta(hours=3))
 
 HISTORY_URL = (
     "https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx"
-    "?lang=he&mode=1"
+    "?lang=en&mode=1"
 )
 FALLBACK_URL = (
     "https://www.oref.org.il/warningMessages/alert/History/AlertsHistory.json"
 )
-
-CATEGORY_NAMES = {
-    1: "Missiles",
-    2: "UAV",
-    3: "Chemical",
-    4: "Warning",
-    7: "Earthquake",
-    8: "Earthquake",
-    9: "Nuclear",
-    10: "Terror",
-    11: "Tsunami",
-    12: "Hazmat",
-}
-
-# Hebrew category descriptions returned by the API → short English names
-HEBREW_TO_ENGLISH = {
-    "ירי רקטות וטילים": "Missiles",
-    "חדירת כלי טיס עוין": "UAV",
-    "חדירת כלי טיס": "UAV",
-    "רעידת אדמה": "Earthquake",
-    "חומרים מסוכנים": "Hazmat",
-    "אירוע רדיולוגי": "Nuclear",
-    "פעולת טרור": "Terror",
-    "צונמי": "Tsunami",
-    "התגוננות כימית": "Chemical",
-}
 
 # Request headers to mimic a browser (oref blocks plain requests)
 HEADERS = {
@@ -194,18 +168,11 @@ def fetch_alerts(
             continue
         if raw["category"] not in categories:
             continue
-        # Translate Hebrew category to English
-        hebrew_desc = raw["category_desc"]
-        english_desc = (
-            HEBREW_TO_ENGLISH.get(hebrew_desc)
-            or CATEGORY_NAMES.get(raw["category"])
-            or f"Category {raw['category']}"
-        )
         alerts.append(Alert(
             area=raw["area"],
             timestamp=raw["timestamp"],
             category=raw["category"],
-            category_desc=english_desc,
+            category_desc=raw["category_desc"] or f"Category {raw['category']}",
             is_night=_is_night(raw["timestamp"], night_start, night_end),
         ))
 
