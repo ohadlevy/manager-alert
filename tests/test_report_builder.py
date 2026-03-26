@@ -56,10 +56,10 @@ class TestBuildReport:
         text = build_report(reports, report_date=TEST_DATE)
         assert "Haifa" in text
 
-    def test_unknown_city_stays_hebrew(self):
+    def test_unknown_city_in_summary(self):
         reports = [_make_area_report("כפר קאסם", [14])]
         text = build_report(reports, report_date=TEST_DATE)
-        assert "כפר קאסם" in text
+        assert "smaller communit" in text
 
     def test_tzevadom_link(self):
         reports = [_make_area_report("חיפה", [14])]
@@ -67,6 +67,42 @@ class TestBuildReport:
         assert "tzevadom.com" in text
 
     def test_remaining_areas(self):
+        # Unknown cities go to "smaller communities" summary
         reports = [_make_area_report(f"area{i}", [12]) for i in range(25)]
-        text = build_report(reports, report_date=TEST_DATE, max_areas=20)
-        assert "5 more areas" in text
+        text = build_report(reports, report_date=TEST_DATE)
+        assert "smaller communit" in text
+
+    def test_severity_heavy(self):
+        reports = [_make_area_report("תל אביב", [2, 3])]
+        text = build_report(reports, report_date=TEST_DATE)
+        assert "Heavy day" in text
+
+    def test_severity_elevated(self):
+        reports = [_make_area_report("תל אביב", [10, 14])]
+        text = build_report(reports, report_date=TEST_DATE)
+        assert "Elevated" in text
+
+    def test_severity_moderate(self):
+        reports = [_make_area_report("כפר קאסם", [10])]
+        text = build_report(reports, report_date=TEST_DATE)
+        assert "Moderate" in text
+
+    def test_region_grouping(self):
+        reports = [
+            _make_area_report("תל אביב", [10]),
+            _make_area_report("חיפה", [10]),
+        ]
+        text = build_report(reports, report_date=TEST_DATE)
+        assert "Central Israel" in text
+        assert "Haifa Area" in text
+
+    def test_explainer_line(self):
+        reports = [_make_area_report("תל אביב", [10])]
+        text = build_report(reports, report_date=TEST_DATE)
+        assert "take shelter" in text
+
+    def test_raanana_is_major(self):
+        reports = [_make_area_report("רעננה", [10])]
+        text = build_report(reports, report_date=TEST_DATE)
+        assert "Elevated" in text
+        assert "Ra'anana" in text
