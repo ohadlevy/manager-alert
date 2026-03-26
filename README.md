@@ -71,6 +71,7 @@ All settings via environment variables (see `.env.example`):
 ## Commands
 
 ```bash
+python -m manager_alert serve                # run scheduler (collect + daily report)
 python -m manager_alert collect              # poll oref API, store in SQLite
 python -m manager_alert report               # send daily report
 python -m manager_alert report --dry-run     # preview without sending
@@ -116,12 +117,12 @@ The container must run from an Israeli IP (oref API is geo-restricted).
 ┌─────────────────────────────────────────┐
 │  Container (UBI9 + Python 3.12)         │
 │                                         │
-│  cron */10  →  collect                  │
-│     │          └ oref API → SQLite      │
-│     │                                   │
-│  cron 13:00 → report                    │
-│                └ SQLite → report text   │
-│                  └ POST → Slack webhook │
+│  scheduler (python process)             │
+│    every 10min → collect                │
+│                  └ oref API → SQLite    │
+│    daily 13:00 → report                 │
+│                  └ SQLite → report text │
+│                    └ POST → Slack       │
 │                                         │
 │  data/alerts.db        (24h history)    │
 │  data/subscribers.json (watchlist)      │

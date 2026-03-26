@@ -143,6 +143,9 @@ def main() -> None:
     report_p.add_argument("--dry-run", action="store_true", help="Print report without sending")
     report_p.add_argument("--live", action="store_true", help="Fetch live from API instead of database")
 
+    # serve (replaces cron)
+    sub.add_parser("serve", help="Run scheduler: collect every 10min, report daily at 13:00 IST")
+
     # watch / unwatch / list
     watch_p = sub.add_parser("watch", help="Add a city to the watchlist")
     watch_p.add_argument("area", help="City name in Hebrew")
@@ -161,7 +164,10 @@ def main() -> None:
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )
 
-    if args.command == "collect":
+    if args.command == "serve":
+        from .scheduler import run_loop
+        run_loop(config)
+    elif args.command == "collect":
         cmd_collect(config)
     elif args.command == "report":
         run_report(config, dry_run=args.dry_run, live=args.live)

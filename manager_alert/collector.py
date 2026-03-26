@@ -23,6 +23,10 @@ CREATE TABLE IF NOT EXISTS alerts (
     UNIQUE(area, timestamp, category)
 );
 CREATE INDEX IF NOT EXISTS idx_timestamp ON alerts(timestamp);
+CREATE TABLE IF NOT EXISTS state (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
 """
 
 
@@ -103,6 +107,20 @@ class AlertStore:
         """Total alerts in the database."""
         with sqlite3.connect(self.db_path) as conn:
             return conn.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
+
+    def get_state(self, key: str) -> str | None:
+        """Read a value from the state table."""
+        with sqlite3.connect(self.db_path) as conn:
+            row = conn.execute("SELECT value FROM state WHERE key = ?", (key,)).fetchone()
+            return row[0] if row else None
+
+    def set_state(self, key: str, value: str) -> None:
+        """Write a value to the state table."""
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO state (key, value) VALUES (?, ?)",
+                (key, value),
+            )
 
 
 def run_collect(
