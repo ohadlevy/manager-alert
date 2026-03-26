@@ -68,3 +68,15 @@ class TestAlertStore:
         result = self.store.get_alerts(lookback_hours=24)
         assert result == []
         assert self.store.count() == 0
+
+    def test_get_state_missing(self):
+        assert self.store.get_state("nonexistent") is None
+
+    def test_set_and_get_state(self):
+        self.store.set_state("last_report_date", "2026-03-26")
+        assert self.store.get_state("last_report_date") == "2026-03-26"
+
+    def test_set_state_overwrites(self):
+        self.store.set_state("key", "old")
+        self.store.set_state("key", "new")
+        assert self.store.get_state("key") == "new"

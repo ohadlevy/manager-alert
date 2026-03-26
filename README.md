@@ -102,9 +102,6 @@ python -m manager_alert collect              # poll oref API, store in SQLite
 python -m manager_alert report               # send daily report
 python -m manager_alert report --dry-run     # preview without sending
 python -m manager_alert report --live        # fetch live from API (skip db)
-python -m manager_alert watch "תל אביב"     # add city to watchlist
-python -m manager_alert unwatch "חיפה"       # remove city
-python -m manager_alert list                 # show watched cities
 ```
 
 ## Container (Podman Compose)
@@ -118,7 +115,6 @@ podman compose logs -f
 
 # Manual commands inside container
 podman compose exec manager-alert python -m manager_alert report --dry-run
-podman compose exec manager-alert python -m manager_alert watch "תל אביב"
 
 # Stop
 podman compose down

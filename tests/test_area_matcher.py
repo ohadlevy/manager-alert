@@ -5,9 +5,7 @@ from datetime import datetime, timedelta, timezone
 from manager_alert.area_matcher import (
     AreaReport,
     extract_city_prefix,
-    match_alerts_to_subscribers,
     normalize,
-    _match_area,
 )
 from manager_alert.oref_client import Alert
 
@@ -48,84 +46,38 @@ class TestExtractCityPrefix:
         assert extract_city_prefix("חיפה - כרמל - מערב") == "חיפה"
 
 
-class TestMatchArea:
-    def test_exact_match(self):
-        assert _match_area("אשדוד", ["אשדוד", "חיפה"]) == "אשדוד"
-
-    def test_prefix_match(self):
-        assert _match_area("תל אביב - מרכז העיר", ["תל אביב", "חיפה"]) == "תל אביב"
-
-    def test_no_match(self):
-        assert _match_area("קריית שמונה", ["אשדוד", "חיפה"]) is None
-
-    def test_reverse_prefix(self):
-        # Subscriber wrote more specific name than oref
-        assert _match_area("חיפה", ["חיפה - כרמל", "אשדוד"]) == "חיפה - כרמל"
-
-
-class TestMatchAlertsToSubscribers:
-    def test_basic_matching(self):
-        alerts = [
-            _make_alert("תל אביב - מרכז העיר"),
-            _make_alert("חיפה"),
-        ]
-        subscribers = {
-            "U1": ["תל אביב"],
-            "U2": ["חיפה", "אשדוד"],
-        }
-        result = match_alerts_to_subscribers(alerts, subscribers)
-
-        assert "U1" in result
-        assert len(result["U1"]) == 1
-        assert result["U1"][0].area_name == "תל אביב"
-
-        assert "U2" in result
-        assert len(result["U2"]) == 1
-        assert result["U2"][0].area_name == "חיפה"
-
-    def test_no_matching_alerts(self):
-        alerts = [_make_alert("קריית שמונה")]
-        subscribers = {"U1": ["אשדוד"]}
-        result = match_alerts_to_subscribers(alerts, subscribers)
-        assert "U1" not in result
-
-    def test_night_alerts_tracked(self):
-        alerts = [
-            _make_alert("חיפה", hour=3),  # night
-            _make_alert("חיפה", hour=14),  # day
-        ]
-        subscribers = {"U1": ["חיפה"]}
-        result = match_alerts_to_subscribers(alerts, subscribers)
-
-        report = result["U1"][0]
+class TestAreaReport:
+    def test_total_count(self):
+        report = AreaReport(area_name="חיפה")
+        report.alerts.append(_make_alert("חיפה", 10))
+        report.alerts.append(_make_alert("חיפה", 14))
         assert report.total_count == 2
+
+    def test_night_count(self):
+        report = AreaReport(area_name="חיפה")
+        night = _make_alert("חיפה", 3)
+        day = _make_alert("חיפה", 14)
+        report.alerts.extend([night, day])
+        report.night_alerts.append(night)
         assert report.night_count == 1
 
-    def test_multiple_subscribers_same_area(self):
-        alerts = [_make_alert("תל אביב")]
-        subscribers = {
-            "U1": ["תל אביב"],
-            "U2": ["תל אביב"],
-        }
-        result = match_alerts_to_subscribers(alerts, subscribers)
-        assert "U1" in result
-        assert "U2" in result
-
     def test_category_breakdown(self):
-        alerts = [
-            _make_alert("חיפה", category=1),
-            _make_alert("חיפה", category=1),
-            _make_alert("חיפה", category=2),
-        ]
-        alerts[2] = Alert(
-            area="חיפה",
-            timestamp=alerts[2].timestamp,
-            category=2,
-            category_desc="UAV Intrusion",
-            is_night=False,
-        )
-        subscribers = {"U1": ["חיפה"]}
-        result = match_alerts_to_subscribers(alerts, subscribers)
-        breakdown = result["U1"][0].category_breakdown
+        report = AreaReport(area_name="חיפה")
+        report.alerts.append(_make_alert("חיפה", 10, category=1))
+        report.alerts.append(_make_alert("חיפה", 11, category=1))
+        uav = Alert(area="חיפה", timestamp=datetime(2026, 3, 26, 12, 0, tzinfo=ISRAEL_TZ),
+                     category=2, category_desc="UAV", is_night=False)
+        report.alerts.append(uav)
+        breakdown = report.category_breakdown
         assert breakdown["Missiles"] == 2
-        assert breakdown["UAV Intrusion"] == 1
+        assert breakdown["UAV"] == 1
+
+    def test_time_window(self):
+        report = AreaReport(area_name="חיפה")
+        report.alerts.append(_make_alert("חיפה", 10))
+        report.alerts.append(_make_alert("חיפה", 14))
+        assert report.time_window == ("10:00", "14:00")
+
+    def test_time_window_empty(self):
+        report = AreaReport(area_name="חיפה")
+        assert report.time_window is None

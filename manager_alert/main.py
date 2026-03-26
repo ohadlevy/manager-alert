@@ -5,9 +5,7 @@ Usage:
     python -m manager_alert report              # Send report from stored alerts
     python -m manager_alert report --dry-run    # Preview without sending
     python -m manager_alert report --live       # Fetch live instead of from db
-    python -m manager_alert watch "תל אביב"    # Add a city to watchlist
-    python -m manager_alert unwatch "חיפה"      # Remove a city
-    python -m manager_alert list                # Show watched cities
+    python -m manager_alert serve               # Run scheduler (collect + daily report)
 """
 
 import argparse
@@ -23,7 +21,6 @@ from .collector import AlertStore, run_collect
 from .oref_client import fetch_alerts
 from .report_builder import build_report
 from .slack_client import send_webhook
-from .subscribers import SubscriberStore
 
 logger = logging.getLogger("manager_alert")
 ISRAEL_TZ = timezone(timedelta(hours=3))
@@ -98,38 +95,6 @@ def cmd_collect(config: dict) -> None:
     )
 
 
-def cmd_watch(store: SubscriberStore, area: str) -> None:
-    added = store.watch("default", area)
-    if added:
-        areas = store.list_areas("default")
-        print(f"Added: {area}")
-        print(f"Watching: {', '.join(areas)}")
-    else:
-        print(f"Already watching: {area}")
-
-
-def cmd_unwatch(store: SubscriberStore, area: str) -> None:
-    removed = store.unwatch("default", area)
-    if removed:
-        areas = store.list_areas("default")
-        if areas:
-            print(f"Removed: {area}")
-            print(f"Watching: {', '.join(areas)}")
-        else:
-            print(f"Removed: {area}. Watchlist is now empty.")
-    else:
-        print(f"Not watching: {area}")
-
-
-def cmd_list(store: SubscriberStore) -> None:
-    areas = store.list_areas("default")
-    if areas:
-        print("Watched areas:")
-        for a in areas:
-            print(f"  - {a}")
-    else:
-        print("No watched areas. Use: python -m manager_alert watch \"תל אביב\"")
-
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Israel Alert Report for Slack")
@@ -145,13 +110,6 @@ def main() -> None:
 
     # serve (replaces cron)
     sub.add_parser("serve", help="Run scheduler: collect every 10min, report daily at 13:00 IST")
-
-    # watch / unwatch / list
-    watch_p = sub.add_parser("watch", help="Add a city to the watchlist")
-    watch_p.add_argument("area", help="City name in Hebrew")
-    unwatch_p = sub.add_parser("unwatch", help="Remove a city from the watchlist")
-    unwatch_p.add_argument("area", help="City name to remove")
-    sub.add_parser("list", help="Show all watched cities")
 
     args = parser.parse_args()
     if not args.command:
@@ -171,12 +129,6 @@ def main() -> None:
         cmd_collect(config)
     elif args.command == "report":
         run_report(config, dry_run=args.dry_run, live=args.live)
-    elif args.command == "watch":
-        cmd_watch(SubscriberStore(), args.area)
-    elif args.command == "unwatch":
-        cmd_unwatch(SubscriberStore(), args.area)
-    elif args.command == "list":
-        cmd_list(SubscriberStore())
 
 
 if __name__ == "__main__":
