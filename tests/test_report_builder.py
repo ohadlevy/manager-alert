@@ -69,7 +69,7 @@ class TestBuildReport:
     def test_severity_heavy(self):
         reports = [_make_area_report("Tel Aviv", [2, 3])]
         text = build_report(reports, report_date=TEST_DATE)
-        assert "Heavy day" in text
+        assert "Heavy" in text
 
     def test_severity_elevated(self):
         reports = [_make_area_report("Tel Aviv", [10, 14])]

@@ -1,13 +1,16 @@
 """Simple scheduler that replaces cron inside the container.
 
-Runs collect every 10 minutes and report once daily at 13:00 IST.
+Runs collect every 10 minutes and sends two reports daily:
+  - 12:00 IST (09:00 UTC): overnight + morning report (22:00-12:00)
+  - 22:00 IST (19:00 UTC): daytime report (12:00-22:00)
+
 All output goes to stdout/stderr naturally.
 """
 
 import logging
 import signal
 import time
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from .collector import AlertStore
 
@@ -15,12 +18,16 @@ logger = logging.getLogger("manager_alert.scheduler")
 
 ISRAEL_TZ = timezone(timedelta(hours=3))
 COLLECT_INTERVAL = 10 * 60  # 10 minutes
-REPORT_HOUR = 10  # 10:00 UTC = 13:00 IST
-STATE_KEY = "last_report_date"
+
+# Report schedule: (UTC hour, report_type, state_key)
+REPORT_SCHEDULE = [
+    (9, "overnight", "last_overnight_report"),   # 09:00 UTC = 12:00 IST
+    (19, "daytime", "last_daytime_report"),       # 19:00 UTC = 22:00 IST
+]
 
 
 def run_loop(config: dict) -> None:
-    """Run collect every 10 min, report daily at REPORT_HOUR UTC."""
+    """Run collect every 10 min, reports at scheduled times."""
     from .main import cmd_collect, run_report
 
     store = AlertStore()
@@ -36,13 +43,15 @@ def run_loop(config: dict) -> None:
 
     last_collect = 0.0
 
-    # Read last report date from DB
-    saved = store.get_state(STATE_KEY)
-    last_report_date = date.fromisoformat(saved) if saved else None
+    # Read last report dates from DB
+    last_sent: dict[str, str | None] = {}
+    for _, _, key in REPORT_SCHEDULE:
+        last_sent[key] = store.get_state(key)
 
-    logger.info("Scheduler started (collect every 10min, report daily at 13:00 IST)")
-    if last_report_date:
-        logger.info("Last report was sent on %s", last_report_date)
+    logger.info("Scheduler started (collect every 10min, reports at 12:00 and 22:00 IST)")
+    for _, rtype, key in REPORT_SCHEDULE:
+        if last_sent[key]:
+            logger.info("Last %s report: %s", rtype, last_sent[key])
 
     # Initial collect on startup
     try:
@@ -54,7 +63,7 @@ def run_loop(config: dict) -> None:
 
     while not stop:
         now_utc = datetime.now(timezone.utc)
-        today = now_utc.date()
+        today = now_utc.date().isoformat()
 
         # Collect every 10 minutes
         if time.monotonic() - last_collect >= COLLECT_INTERVAL:
@@ -65,15 +74,16 @@ def run_loop(config: dict) -> None:
                 logger.exception("Collect failed")
             last_collect = time.monotonic()
 
-        # Report once daily at REPORT_HOUR UTC
-        if now_utc.hour >= REPORT_HOUR and last_report_date != today:
-            try:
-                logger.info("Sending daily report...")
-                run_report(config)
-                last_report_date = today
-                store.set_state(STATE_KEY, today.isoformat())
-            except Exception:
-                logger.exception("Report failed")
+        # Check each scheduled report
+        for utc_hour, report_type, state_key in REPORT_SCHEDULE:
+            if now_utc.hour >= utc_hour and last_sent[state_key] != today:
+                try:
+                    logger.info("Sending %s report...", report_type)
+                    run_report(config, report_type=report_type)
+                    last_sent[state_key] = today
+                    store.set_state(state_key, today)
+                except Exception:
+                    logger.exception("%s report failed", report_type)
 
         time.sleep(30)
 

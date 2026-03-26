@@ -1,15 +1,17 @@
 # Manager Alert
 
-Daily Israel alert report for Slack. Helps managers and colleagues outside Israel understand the security situation affecting their Israeli teammates.
+Twice-daily Israel alert report for Slack. Helps managers and colleagues outside Israel understand the security situation affecting their Israeli teammates.
 
-Posts a compact English summary of rocket/siren alerts to a Slack channel via webhook, with overnight alert tracking to flag sleep disruption.
+Posts compact English summaries of rocket/siren alerts to a Slack channel via webhook:
+- **12:00 IST** — Overnight + morning report (22:00-12:00), highlights sleep disruption
+- **22:00 IST** — Daytime report (12:00-22:00), summarizes the workday
 
 ## Report Examples
 
-**Heavy day with overnight alerts:**
+**Overnight + morning report (12:00 IST):**
 ```
-🇮🇱 Israel Daily Vibe Check -- March 26, 2026
-🔴 Heavy day — 803 sirens, including overnight
+🇮🇱 Israel Overnight + Morning Update -- March 26, 2026
+🔴 Heavy — 803 sirens, including major cities
 
 😴 Sleepy colleagues alert! 11 sirens overnight (22:00-07:00)
   Tel Aviv 3x · Haifa 4x · Ashdod 3x · Ramat Gan 1x
@@ -20,8 +22,6 @@ Posts a compact English summary of rocket/siren alerts to a Slack channel via we
 Central Israel
   Tel Aviv 12x · Ramat Gan 6x · Herzliya 6x · Rishon LeZion 4x
   Ra'anana 3x · Hod HaSharon 3x · Kfar Saba 2x
-Haifa Area
-  Haifa 5x · Kiryat Bialik 1x
 Northern Israel
   Acre 4x · Nahariya 3x · Shlomi 3x
 
@@ -30,9 +30,9 @@ Northern Israel
 Full alert map | Source: Pikud HaOref
 ```
 
-**Moderate day:**
+**Daytime report (22:00 IST):**
 ```
-🇮🇱 Israel Daily Vibe Check -- March 26, 2026
+🇮🇱 Israel Day Summary -- March 26, 2026
 🟡 Moderate — 18 sirens
 
 📌 Sirens = take shelter for ~10 min. Most colleagues are safe but disrupted.
@@ -45,10 +45,10 @@ Northern Israel
 Full alert map | Source: Pikud HaOref
 ```
 
-**Quiet day:**
+**Quiet night:**
 ```
-🇮🇱 Israel Daily Vibe Check -- March 26, 2026
-☕ All quiet! Your Israeli colleagues had a peaceful 24h. Business as usual.
+🇮🇱 Israel Overnight + Morning Update -- March 26, 2026
+☕ Quiet night! Your Israeli colleagues slept well. Business as usual.
 ```
 
 ## Quick Start
@@ -89,7 +89,6 @@ All settings via environment variables (see `.env.example`):
 |----------|-------------|---------|
 | `SLACK_WEBHOOK_URL` | Slack webhook URL | required |
 | `OREF_CATEGORIES` | Alert categories to include | `1,2` (Missiles, UAV) |
-| `ALERT_LOOKBACK_HOURS` | Hours of history in report | `24` |
 | `NIGHT_START_HOUR` | Night period start | `22` |
 | `NIGHT_END_HOUR` | Night period end | `7` |
 | `LOG_LEVEL` | Logging level | `INFO` |
@@ -141,7 +140,8 @@ The container must run from an Israeli IP (oref API is geo-restricted).
 │  scheduler (python process)             │
 │    every 10min → collect                │
 │                  └ oref API → SQLite    │
-│    daily 13:00 → report                 │
+│    12:00 IST  → overnight report        │
+│    22:00 IST  → daytime report          │
 │                  └ SQLite → report text │
 │                    └ POST → Slack       │
 │                                         │

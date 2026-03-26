@@ -27,7 +27,7 @@ def _plural(n: int, word: str) -> str:
 def _severity(total: int, night: int, has_major_cities: bool) -> tuple[str, str]:
     """Return (emoji, label) for the severity line."""
     if night > 0 or (total > 100 and has_major_cities):
-        return (":red_circle:", "Heavy day")
+        return (":red_circle:", "Heavy")
     if total > 50 or has_major_cities:
         return (":large_orange_circle:", "Elevated")
     return (":large_yellow_circle:", "Moderate")
@@ -36,19 +36,34 @@ def _severity(total: int, night: int, has_major_cities: bool) -> tuple[str, str]
 def build_report(
     area_reports: list[AreaReport],
     report_date: datetime | None = None,
+    report_type: str = "daily",
     max_areas: int = 20,
 ) -> str:
-    """Build a compact plain-text report for posting via webhook."""
+    """Build a compact plain-text report for posting via webhook.
+
+    report_type: "overnight" (22:00-12:00), "daytime" (12:00-22:00), or "daily" (24h)
+    """
     if report_date is None:
         report_date = datetime.now(ISRAEL_TZ)
 
     date_str = report_date.strftime("%B %d, %Y")
     lines: list[str] = []
 
-    lines.append(f"*:israel: Israel Daily Vibe Check -- {date_str}*")
+    titles = {
+        "overnight": f"*:israel: Israel Overnight + Morning Update -- {date_str}*",
+        "daytime": f"*:israel: Israel Day Summary -- {date_str}*",
+        "daily": f"*:israel: Israel Daily Vibe Check -- {date_str}*",
+    }
+    lines.append(titles.get(report_type, titles["daily"]))
+
+    quiet_messages = {
+        "overnight": ":coffee: Quiet night! Your Israeli colleagues slept well. Business as usual.",
+        "daytime": ":coffee: Quiet day! No alerts during working hours in Israel.",
+        "daily": ":coffee: All quiet! Your Israeli colleagues had a peaceful 24h. Business as usual.",
+    }
 
     if not area_reports:
-        lines.append(":coffee: All quiet! Your Israeli colleagues had a peaceful 24h. Business as usual.")
+        lines.append(quiet_messages.get(report_type, quiet_messages["daily"]))
         return "\n".join(lines)
 
     total_alerts = sum(r.total_count for r in area_reports)
@@ -59,13 +74,11 @@ def build_report(
     # Severity line
     emoji, label = _severity(total_alerts, total_night, has_major)
     severity_detail = f"{_plural(total_alerts, 'siren')}"
-    if total_night > 0:
-        severity_detail += ", including overnight"
-    elif has_major:
+    if has_major:
         severity_detail += ", including major cities"
     lines.append(f"{emoji} *{label}* — {severity_detail}")
 
-    # Night alert section (shown first when present)
+    # Night alert section (for overnight and daily reports)
     if total_night > 0:
         night_areas = [r for r in area_reports if r.night_count > 0]
         night_cities = [

@@ -66,17 +66,37 @@ class AlertStore:
         logger.info("Stored %d new alerts (of %d fetched)", added, len(alerts))
         return added
 
-    def get_alerts(self, lookback_hours: int = 24) -> list[Alert]:
-        """Retrieve alerts from the last N hours."""
-        cutoff = datetime.now(ISRAEL_TZ) - timedelta(hours=lookback_hours)
-        cutoff_str = cutoff.isoformat()
+    def get_alerts(
+        self,
+        lookback_hours: int = 24,
+        since: datetime | None = None,
+        until: datetime | None = None,
+    ) -> list[Alert]:
+        """Retrieve alerts for a time window.
+
+        If since/until are provided, they take precedence over lookback_hours.
+        """
+        if since and until:
+            cutoff_str = since.isoformat()
+            until_str = until.isoformat()
+        else:
+            cutoff = datetime.now(ISRAEL_TZ) - timedelta(hours=lookback_hours)
+            cutoff_str = cutoff.isoformat()
+            until_str = None
 
         with sqlite3.connect(self.db_path) as conn:
-            rows = conn.execute(
-                "SELECT area, timestamp, category, category_desc, is_night "
-                "FROM alerts WHERE timestamp >= ? ORDER BY timestamp",
-                (cutoff_str,),
-            ).fetchall()
+            if until_str:
+                rows = conn.execute(
+                    "SELECT area, timestamp, category, category_desc, is_night "
+                    "FROM alerts WHERE timestamp >= ? AND timestamp < ? ORDER BY timestamp",
+                    (cutoff_str, until_str),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT area, timestamp, category, category_desc, is_night "
+                    "FROM alerts WHERE timestamp >= ? ORDER BY timestamp",
+                    (cutoff_str,),
+                ).fetchall()
 
         alerts = []
         for area, ts_str, category, category_desc, is_night in rows:

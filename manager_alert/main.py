@@ -55,8 +55,31 @@ def _build_area_reports(alerts: list) -> list[AreaReport]:
     return sorted(areas.values(), key=lambda r: r.total_count, reverse=True)
 
 
-def run_report(config: dict, dry_run: bool = False, live: bool = False) -> None:
-    """Execute a single report cycle."""
+def run_report(
+    config: dict,
+    dry_run: bool = False,
+    live: bool = False,
+    report_type: str = "daily",
+) -> None:
+    """Execute a single report cycle.
+
+    report_type: "overnight" (22:00-12:00), "daytime" (12:00-22:00), or "daily" (24h)
+    """
+    now = datetime.now(ISRAEL_TZ)
+
+    # Determine time window based on report type
+    if report_type == "overnight":
+        # 22:00 yesterday to 12:00 today
+        since = now.replace(hour=22, minute=0, second=0, microsecond=0) - timedelta(days=1)
+        until = now.replace(hour=12, minute=0, second=0, microsecond=0)
+    elif report_type == "daytime":
+        # 12:00 today to 22:00 today
+        since = now.replace(hour=12, minute=0, second=0, microsecond=0)
+        until = now.replace(hour=22, minute=0, second=0, microsecond=0)
+    else:
+        since = None
+        until = None
+
     if live:
         logger.info("Fetching alerts live (lookback=%dh)", config["lookback_hours"])
         alerts = fetch_alerts(
@@ -66,14 +89,20 @@ def run_report(config: dict, dry_run: bool = False, live: bool = False) -> None:
             night_end=config["night_end"],
         )
     else:
-        logger.info("Reading alerts from database (lookback=%dh)", config["lookback_hours"])
-        store = AlertStore()
-        alerts = store.get_alerts(lookback_hours=config["lookback_hours"])
+        if since and until:
+            logger.info("Reading alerts from database (%s, %s-%s)",
+                        report_type, since.strftime("%H:%M"), until.strftime("%H:%M"))
+            store = AlertStore()
+            alerts = store.get_alerts(since=since, until=until)
+        else:
+            logger.info("Reading alerts from database (lookback=%dh)", config["lookback_hours"])
+            store = AlertStore()
+            alerts = store.get_alerts(lookback_hours=config["lookback_hours"])
 
     logger.info("Got %d alerts", len(alerts))
 
     all_reports = _build_area_reports(alerts)
-    report_text = build_report(all_reports)
+    report_text = build_report(all_reports, report_type=report_type)
 
     if dry_run:
         send_webhook("", report_text, dry_run=True)
