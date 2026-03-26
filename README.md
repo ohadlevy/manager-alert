@@ -80,22 +80,32 @@ python -m manager_alert unwatch "חיפה"       # remove city
 python -m manager_alert list                 # show watched cities
 ```
 
-## Container (Podman)
+## Container (Podman Compose)
 
 ```bash
-# Build
-podman build -t manager-alert -f Containerfile .
+# Start (builds + runs in background)
+podman compose up -d --build
 
-# Run (collects every 10min, reports daily at 13:00 IST)
+# View logs
+podman compose logs -f
+
+# Manual commands inside container
+podman compose exec manager-alert python -m manager_alert report --dry-run
+podman compose exec manager-alert python -m manager_alert watch "תל אביב"
+
+# Stop
+podman compose down
+```
+
+Or without compose:
+
+```bash
+podman build -t manager-alert -f Containerfile .
 podman run -d \
   --name manager-alert \
   --env-file .env \
   -v ./data:/app/data:Z \
   manager-alert
-
-# Manual commands inside container
-podman exec manager-alert python -m manager_alert report --dry-run
-podman exec manager-alert python -m manager_alert watch "תל אביב"
 ```
 
 The container must run from an Israeli IP (oref API is geo-restricted).

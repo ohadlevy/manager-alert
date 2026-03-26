@@ -1,0 +1,10 @@
+services:
+  manager-alert:
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: manager-alert
+    env_file: .env
+    volumes:
+      - ./data:/app/data:Z
+    restart: unless-stopped
