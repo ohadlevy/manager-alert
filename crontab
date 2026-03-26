@@ -1,0 +1,7 @@
+# Collect alerts every 10 minutes
+*/10 * * * * cd /app && /usr/local/bin/python -m manager_alert collect >> /var/log/manager-alert.log 2>&1
+
+# Send daily report at 13:00 Israel time (10:00 UTC)
+0 10 * * * cd /app && /usr/local/bin/python -m manager_alert report >> /var/log/manager-alert.log 2>&1
+
+# Empty line required by cron
