@@ -6,17 +6,43 @@ Posts a compact English summary of rocket/siren alerts to a Slack channel via we
 
 ## Report Examples
 
-**Typical day:**
+**Heavy day with overnight alerts:**
 ```
 🇮🇱 Israel Daily Vibe Check -- March 26, 2026
-18 sirens across 7 areas in the last 24h
-😴 Sleepy colleagues alert! 11 sirens went off overnight (22:00-07:00) in 5 areas. Maybe go easy on the morning meetings.
+🔴 Heavy day — 803 sirens, including overnight
 
-Tel Aviv (תל אביב)  5x Missiles/UAV  02:15-11:15 😴
-Haifa (חיפה)  4x Missiles  01:15-14:15 😴
-Ashdod (אשדוד)  3x Missiles  02:15-05:15 😴
-Herzliya (הרצליה)  2x Missiles  10:15-11:15
-...
+😴 Sleepy colleagues alert! 11 sirens overnight (22:00-07:00)
+  Tel Aviv 3x · Haifa 4x · Ashdod 3x · Ramat Gan 1x
+  Maybe go easy on the morning meetings.
+
+📌 Sirens = take shelter for ~10 min. Most colleagues are safe but disrupted.
+
+Central Israel
+  Tel Aviv 12x · Ramat Gan 6x · Herzliya 6x · Rishon LeZion 4x
+  Ra'anana 3x · Hod HaSharon 3x · Kfar Saba 2x
+Haifa Area
+  Haifa 5x · Kiryat Bialik 1x
+Northern Israel
+  Acre 4x · Nahariya 3x · Shlomi 3x
+
+...and 695 sirens across 475 smaller communities
+
+Full alert map | Source: Pikud HaOref
+```
+
+**Moderate day:**
+```
+🇮🇱 Israel Daily Vibe Check -- March 26, 2026
+🟡 Moderate — 18 sirens
+
+📌 Sirens = take shelter for ~10 min. Most colleagues are safe but disrupted.
+
+Northern Israel
+  Nahariya 6x · Acre 4x · Kiryat Shmona 3x
+
+...and 5 sirens across 3 smaller communities
+
+Full alert map | Source: Pikud HaOref
 ```
 
 **Quiet day:**
