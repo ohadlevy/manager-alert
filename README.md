@@ -120,15 +120,14 @@ podman compose exec manager-alert python -m manager_alert report --dry-run
 podman compose down
 ```
 
-Or without compose:
+Or pull the pre-built image:
 
 ```bash
-podman build -t manager-alert -f Containerfile .
 podman run -d \
   --name manager-alert \
   --env-file .env \
   -v ./data:/app/data:Z \
-  manager-alert
+  ghcr.io/ohadlevy/manager-alert:latest
 ```
 
 The container must run from an Israeli IP (oref API is geo-restricted).
