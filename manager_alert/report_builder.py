@@ -71,6 +71,6 @@ def build_report(
         lines.append(f"_...and {_plural(remaining, 'more area')} ({_plural(remaining_alerts, 'siren')})_")
 
     lines.append("")
-    lines.append("<https://www.tzevadom.com/|Full alert map> | _Source: Pikud HaOref_")
+    lines.append("<https://tzevadom.com/|Full alert map> | _Source: Pikud HaOref_")
 
     return "\n".join(lines)

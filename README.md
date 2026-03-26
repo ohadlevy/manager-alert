@@ -129,7 +129,7 @@ The container must run from an Israeli IP (oref API is geo-restricted).
 ## Data Sources
 
 - Alerts: [Pikud HaOref](https://www.oref.org.il/) (Israel Home Front Command)
-- Alert map: [Tzevadom](https://www.tzevadom.com/)
+- Alert map: [Tzevadom](https://tzevadom.com/)
 
 ## Tests
 
