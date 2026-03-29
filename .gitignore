@@ -5,4 +5,5 @@ __pycache__/
 .pytest_cache/
 data/alerts.db
 data/subscribers.json
+data/subscribers.json.migrated
 *.egg-info/

@@ -6,6 +6,13 @@ Usage:
     python -m manager_alert report --dry-run    # Preview without sending
     python -m manager_alert report --live       # Fetch live instead of from db
     python -m manager_alert serve               # Run scheduler (collect + daily report)
+    python -m manager_alert add-subscriber      # Add a subscriber
+    python -m manager_alert update-subscriber   # Update a subscriber
+    python -m manager_alert remove-subscriber   # Remove a subscriber
+    python -m manager_alert enable-subscriber   # Enable a subscriber
+    python -m manager_alert disable-subscriber  # Disable a subscriber
+    python -m manager_alert list-subscribers    # List all subscribers
+    python -m manager_alert list-cities         # List known city names
 """
 
 import argparse
@@ -21,7 +28,7 @@ from .collector import AlertStore, run_collect
 from .oref_client import fetch_alerts
 from .report_builder import build_report, build_subscriber_report
 from .slack_client import send_webhook
-from .subscribers import Subscriber, add_subscriber, load_subscribers
+from .subscribers import Subscriber, SubscriberStore
 
 logger = logging.getLogger("manager_alert")
 ISRAEL_TZ = timezone(timedelta(hours=3))
@@ -57,25 +64,45 @@ def _build_area_reports(alerts: list) -> list[AreaReport]:
 
 
 def _send_subscriber_reports(
-    subscribers: list[Subscriber],
     area_reports: list[AreaReport],
     report_type: str,
     dry_run: bool = False,
 ) -> None:
-    """Send personalized reports to each subscriber."""
+    """Send personalized reports to each enabled subscriber."""
+    sub_store = SubscriberStore()
+    subscribers = sub_store.get_enabled()
+    if not subscribers:
+        return
+
+    today = datetime.now(ISRAEL_TZ).date().isoformat()
+
     for sub in subscribers:
+        if not dry_run and sub_store.was_report_sent(sub.id, report_type, today):
+            logger.info("Already sent %s report to '%s' today, skipping",
+                        report_type, sub.name)
+            continue
+
         sub_text = build_subscriber_report(
             area_reports,
             subscriber_name=sub.name,
             watched_cities=sub.cities,
             report_type=report_type,
         )
+
+        logger.info("Sending %s report to '%s' (cities: %s)",
+                     report_type, sub.name, ", ".join(sub.cities))
+        logger.debug("Report for '%s':\n%s", sub.name, sub_text)
+
         if dry_run:
-            print(f"\n--- Subscriber: {sub.name} ---")
+            print(f"\n--- Subscriber: {sub.name} (cities: {', '.join(sub.cities)}) ---")
             send_webhook("", sub_text, dry_run=True)
         else:
-            logger.info("Sending report to subscriber %s", sub.name)
-            send_webhook(sub.webhook_url, sub_text)
+            try:
+                send_webhook(sub.webhook_url, sub_text)
+                sub_store.record_report_sent(sub.id, report_type, today)
+                logger.info("Sent %s report to '%s' successfully", report_type, sub.name)
+            except Exception:
+                logger.exception("Failed to send report to '%s'", sub.name)
 
 
 def run_report(
@@ -127,6 +154,8 @@ def run_report(
     all_reports = _build_area_reports(alerts)
     report_text = build_report(all_reports, report_type=report_type)
 
+    logger.debug("Broadcast %s report:\n%s", report_type, report_text)
+
     if dry_run:
         send_webhook("", report_text, dry_run=True)
     else:
@@ -137,9 +166,7 @@ def run_report(
 
     # Send personalized subscriber reports
     try:
-        subscribers = load_subscribers()
-        if subscribers:
-            _send_subscriber_reports(subscribers, all_reports, report_type, dry_run=dry_run)
+        _send_subscriber_reports(all_reports, report_type, dry_run=dry_run)
     except Exception:
         logger.exception("Subscriber reports failed")
 
@@ -153,7 +180,6 @@ def cmd_collect(config: dict) -> None:
         night_start=config["night_start"],
         night_end=config["night_end"],
     )
-
 
 
 def main() -> None:
@@ -180,6 +206,27 @@ def main() -> None:
     add_sub_p.add_argument("--webhook-url", required=True, help="Slack webhook URL")
     add_sub_p.add_argument("--cities", nargs="+", required=True, help="City names to watch")
 
+    # update-subscriber
+    update_sub_p = sub.add_parser("update-subscriber", help="Update a subscriber")
+    update_sub_p.add_argument("name", help="Subscriber name to update")
+    update_sub_p.add_argument("--webhook-url", help="New Slack webhook URL")
+    update_sub_p.add_argument("--cities", nargs="+", help="New city names to watch")
+
+    # remove-subscriber
+    remove_sub_p = sub.add_parser("remove-subscriber", help="Remove a subscriber")
+    remove_sub_p.add_argument("name", help="Subscriber name to remove")
+
+    # enable-subscriber
+    enable_sub_p = sub.add_parser("enable-subscriber", help="Enable a subscriber")
+    enable_sub_p.add_argument("name", help="Subscriber name to enable")
+
+    # disable-subscriber
+    disable_sub_p = sub.add_parser("disable-subscriber", help="Disable a subscriber")
+    disable_sub_p.add_argument("name", help="Subscriber name to disable")
+
+    # list-subscribers
+    sub.add_parser("list-subscribers", help="List all subscribers")
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -200,16 +247,77 @@ def main() -> None:
         run_report(config, dry_run=args.dry_run, live=args.live)
     elif args.command == "list-cities":
         from .city_names import CITY_REGIONS
-        for city in sorted(CITY_REGIONS):
-            print(f"  {city} ({CITY_REGIONS[city]})")
+        from collections import defaultdict
+        by_region: dict[str, list[str]] = defaultdict(list)
+        for city, region in sorted(CITY_REGIONS.items()):
+            by_region[region].append(city)
+        for region in sorted(by_region):
+            print(f"\n{region}:")
+            print(f"  {', '.join(sorted(by_region[region]))}")
     elif args.command == "add-subscriber":
         from .city_names import CITY_REGIONS
         unknown = [c for c in args.cities if c not in CITY_REGIONS]
         if unknown:
             print(f"Warning: unknown cities (will still be tracked): {', '.join(unknown)}")
             print("Run 'list-cities' to see all known city names.")
-        add_subscriber(name=args.name, webhook_url=args.webhook_url, cities=args.cities)
-        print(f"Added subscriber '{args.name}' watching {len(args.cities)} cities.")
+        store = SubscriberStore()
+        try:
+            store.add(name=args.name, webhook_url=args.webhook_url, cities=args.cities)
+            print(f"Added subscriber '{args.name}' watching {len(args.cities)} cities.")
+        except ValueError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.command == "update-subscriber":
+        if not args.webhook_url and not args.cities:
+            print("Error: provide --webhook-url and/or --cities to update", file=sys.stderr)
+            sys.exit(1)
+        store = SubscriberStore()
+        try:
+            store.update(name=args.name, webhook_url=args.webhook_url, cities=args.cities)
+            print(f"Updated subscriber '{args.name}'.")
+        except KeyError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.command == "remove-subscriber":
+        store = SubscriberStore()
+        try:
+            store.remove(name=args.name)
+            print(f"Removed subscriber '{args.name}'.")
+        except KeyError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.command == "enable-subscriber":
+        store = SubscriberStore()
+        try:
+            store.enable(name=args.name)
+            print(f"Enabled subscriber '{args.name}'.")
+        except KeyError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.command == "disable-subscriber":
+        store = SubscriberStore()
+        try:
+            store.disable(name=args.name)
+            print(f"Disabled subscriber '{args.name}'.")
+        except KeyError as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+    elif args.command == "list-subscribers":
+        store = SubscriberStore()
+        subscribers = store.list_all()
+        if not subscribers:
+            print("No subscribers configured.")
+        else:
+            print(f"{'ID':<4} {'Name':<20} {'Cities':<35} {'Enabled':<8} {'Created':<12} {'Sent':>5}")
+            print("-" * 84)
+            for s in subscribers:
+                cities_str = ", ".join(s.cities)
+                if len(cities_str) > 33:
+                    cities_str = cities_str[:30] + "..."
+                created = s.created_at[:10] if s.created_at else ""
+                sent = store.get_reports_sent_count(s.id)
+                enabled = "yes" if s.enabled else "no"
+                print(f"{s.id:<4} {s.name:<20} {cities_str:<35} {enabled:<8} {created:<12} {sent:>5}")
 
 
 if __name__ == "__main__":

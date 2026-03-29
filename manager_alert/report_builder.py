@@ -140,10 +140,10 @@ def build_subscriber_report(
     watched_cities: list[str],
     report_date: datetime | None = None,
     report_type: str = "daily",
-) -> str | None:
+) -> str:
     """Build a personalized report filtered to a subscriber's watched cities.
 
-    Returns None if none of the watched cities had alerts.
+    Returns a quiet message if none of the watched cities had alerts.
     """
     if report_date is None:
         report_date = datetime.now(ISRAEL_TZ)

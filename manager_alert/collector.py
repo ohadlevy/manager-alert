@@ -163,4 +163,13 @@ def run_collect(
 
     store.store(alerts)
     store.prune(keep_hours=48)
+
+    # Prune old subscriber report records
+    from .subscribers import SubscriberStore
+    try:
+        sub_store = SubscriberStore(db_path)
+        sub_store.prune_reports(days=30)
+    except sqlite3.OperationalError:
+        logger.debug("Subscriber report pruning skipped (table may not exist yet)")
+
     logger.info("Collection complete. DB has %d alerts total.", store.count())

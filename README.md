@@ -106,6 +106,12 @@ python -m manager_alert add-subscriber \     # add a subscriber
   --name "Backend Team" \
   --webhook-url "https://hooks.slack.com/triggers/..." \
   --cities "Tel Aviv" "Ra'anana" "Herzliya"
+python -m manager_alert update-subscriber "Backend Team" \
+  --cities "Tel Aviv" "Ra'anana"             # update cities
+python -m manager_alert remove-subscriber "Backend Team"
+python -m manager_alert disable-subscriber "Backend Team"
+python -m manager_alert enable-subscriber "Backend Team"
+python -m manager_alert list-subscribers     # show all subscribers
 ```
 
 ## Personalized City Alerts
@@ -138,7 +144,7 @@ Individual users can subscribe to alerts for specific cities. Each subscriber ge
      --webhook-url "https://hooks.slack.com/triggers/..." \
      --cities "Tel Aviv" "Ra'anana" "Herzliya"
    ```
-   You can also edit `data/subscribers.json` directly (see `data/subscribers.json.example`).
+   Subscribers are stored in SQLite (`data/alerts.db`) — no JSON files to manage.
 
 ### Personalized Report Example
 
@@ -156,7 +162,7 @@ Herzliya (Central Israel): 2 sirens [10:00–14:00]
 Full alert map | Source: Pikud HaOref
 ```
 
-When none of your watched cities have alerts, no message is sent.
+When none of your watched cities have alerts, a quiet "all clear" message is sent so you know the system is working.
 
 ## Container (Podman Compose)
 
@@ -202,8 +208,7 @@ The container must run from an Israeli IP (oref API is geo-restricted).
 │                    └ POST → subscriber DMs   │
 │                      (filtered by city)      │
 │                                              │
-│  data/alerts.db          (24h history)       │
-│  data/subscribers.json   (city watchlists)   │
+│  data/alerts.db          (alerts + subs)     │
 └──────────────────────────────────────────────┘
 ```
 
