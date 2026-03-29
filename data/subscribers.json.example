@@ -1,0 +1,12 @@
+[
+  {
+    "name": "Ziv",
+    "webhook_url": "https://hooks.slack.com/triggers/YOUR/WEBHOOK/URL",
+    "cities": ["Tel Aviv", "Ra'anana", "Herzliya"]
+  },
+  {
+    "name": "Backend Team",
+    "webhook_url": "https://hooks.slack.com/triggers/YOUR/OTHER/WEBHOOK",
+    "cities": ["Haifa", "Kiryat Ata", "Kiryat Bialik"]
+  }
+]

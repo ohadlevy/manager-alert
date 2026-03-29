@@ -101,7 +101,62 @@ python -m manager_alert collect              # poll oref API, store in SQLite
 python -m manager_alert report               # send daily report
 python -m manager_alert report --dry-run     # preview without sending
 python -m manager_alert report --live        # fetch live from API (skip db)
+python -m manager_alert list-cities          # list all known city names
+python -m manager_alert add-subscriber \     # add a subscriber
+  --name "Backend Team" \
+  --webhook-url "https://hooks.slack.com/triggers/..." \
+  --cities "Tel Aviv" "Ra'anana" "Herzliya"
 ```
+
+## Personalized City Alerts
+
+Individual users can subscribe to alerts for specific cities. Each subscriber gets a separate, filtered report alongside the general channel report — only when their watched cities have alerts.
+
+### Setup
+
+1. **Create a Slack workflow** for receiving your personal alerts:
+   - Go to **Automations** → create a new Workflow
+   - Set trigger to **"From a webhook"**
+   - Add a variable called `report` (type: text)
+   - Add step: **"Send a message to a channel"** → select a private channel (e.g., `#my-alerts`)
+   - Map `{{report}}` to the message body
+   - Publish and copy the webhook URL
+
+2. **List available cities** and **add yourself** via CLI:
+   ```bash
+   python -m manager_alert list-cities
+   python -m manager_alert add-subscriber \
+     --name "Your Name" \
+     --webhook-url "https://hooks.slack.com/triggers/..." \
+     --cities "Tel Aviv" "Ra'anana" "Herzliya"
+   ```
+   Or in a container:
+   ```bash
+   podman compose exec manager-alert python -m manager_alert list-cities
+   podman compose exec manager-alert python -m manager_alert add-subscriber \
+     --name "Your Name" \
+     --webhook-url "https://hooks.slack.com/triggers/..." \
+     --cities "Tel Aviv" "Ra'anana" "Herzliya"
+   ```
+   You can also edit `data/subscribers.json` directly (see `data/subscribers.json.example`).
+
+### Personalized Report Example
+
+```
+🔔 Your Name's Daily Alert Update -- March 29, 2026
+11 sirens in your watched cities
+
+😴 5 sirens overnight (22:00-07:00)
+  Tel Aviv 3x · Ra'anana 2x
+
+Tel Aviv (Central Israel): 6 sirens [02:15–14:30]
+Ra'anana (Central Israel): 3 sirens [03:00–11:45]
+Herzliya (Central Israel): 2 sirens [10:00–14:00]
+
+Full alert map | Source: Pikud HaOref
+```
+
+When none of your watched cities have alerts, no message is sent.
 
 ## Container (Podman Compose)
 
@@ -134,19 +189,22 @@ The container must run from an Israeli IP (oref API is geo-restricted).
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│  Container (UBI9 + Python 3.12)         │
-│                                         │
-│  scheduler (python process)             │
-│    every 10min → collect                │
-│                  └ oref API → SQLite    │
-│    12:00 IST  → overnight report        │
-│    22:00 IST  → daytime report          │
-│                  └ SQLite → report text │
-│                    └ POST → Slack       │
-│                                         │
-│  data/alerts.db        (24h history)    │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│  Container (UBI9 + Python 3.12)              │
+│                                              │
+│  scheduler (python process)                  │
+│    every 10min → collect                     │
+│                  └ oref API → SQLite         │
+│    12:00 IST  → overnight report             │
+│    22:00 IST  → daytime report               │
+│                  └ SQLite → report text      │
+│                    ├ POST → Slack channel     │
+│                    └ POST → subscriber DMs   │
+│                      (filtered by city)      │
+│                                              │
+│  data/alerts.db          (24h history)       │
+│  data/subscribers.json   (city watchlists)   │
+└──────────────────────────────────────────────┘
 ```
 
 ## How It Works

@@ -132,3 +132,70 @@ def build_report(
     lines.append("<https://tzevadom.com/|Full alert map> | _Source: Pikud HaOref_")
 
     return "\n".join(lines)
+
+
+def build_subscriber_report(
+    area_reports: list[AreaReport],
+    subscriber_name: str,
+    watched_cities: list[str],
+    report_date: datetime | None = None,
+    report_type: str = "daily",
+) -> str | None:
+    """Build a personalized report filtered to a subscriber's watched cities.
+
+    Returns None if none of the watched cities had alerts.
+    """
+    if report_date is None:
+        report_date = datetime.now(ISRAEL_TZ)
+
+    watched_set = {c.lower() for c in watched_cities}
+    filtered = [r for r in area_reports if r.area_name.lower() in watched_set]
+
+    date_str = report_date.strftime("%B %d, %Y")
+    lines: list[str] = []
+
+    titles = {
+        "overnight": f"*:bell: {subscriber_name}'s Overnight Alert Update -- {date_str}*",
+        "daytime": f"*:bell: {subscriber_name}'s Day Alert Update -- {date_str}*",
+        "daily": f"*:bell: {subscriber_name}'s Daily Alert Update -- {date_str}*",
+    }
+    lines.append(titles.get(report_type, titles["daily"]))
+
+    if not filtered:
+        lines.append(":coffee: All clear — no alerts in your watched cities.")
+        return "\n".join(lines)
+
+    total_alerts = sum(r.total_count for r in filtered)
+    total_night = sum(r.night_count for r in filtered)
+
+    lines.append(f"{_plural(total_alerts, 'siren')} in your watched cities")
+
+    if total_night > 0:
+        night_cities = [
+            f"{r.area_name} {r.night_count}x"
+            for r in sorted(filtered, key=lambda r: r.night_count, reverse=True)
+            if r.night_count > 0
+        ]
+        lines.append("")
+        lines.append(
+            f":sleepy: {_plural(total_night, 'siren')} overnight (22:00-07:00)"
+        )
+        lines.append(f"  {' · '.join(night_cities)}")
+
+    lines.append("")
+    for r in sorted(filtered, key=lambda r: r.total_count, reverse=True):
+        region = get_region(r.area_name) or ""
+        region_str = f" ({region})" if region else ""
+        window = r.time_window
+        if window and window[0] != window[1]:
+            time_str = f" [{window[0]}–{window[1]}]"
+        elif window:
+            time_str = f" [{window[0]}]"
+        else:
+            time_str = ""
+        lines.append(f"*{r.area_name}*{region_str}: {_plural(r.total_count, 'siren')}{time_str}")
+
+    lines.append("")
+    lines.append("<https://tzevadom.com/|Full alert map> | _Source: Pikud HaOref_")
+
+    return "\n".join(lines)

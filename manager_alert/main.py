@@ -19,8 +19,9 @@ from dotenv import load_dotenv
 from .area_matcher import AreaReport, extract_city_prefix
 from .collector import AlertStore, run_collect
 from .oref_client import fetch_alerts
-from .report_builder import build_report
+from .report_builder import build_report, build_subscriber_report
 from .slack_client import send_webhook
+from .subscribers import Subscriber, add_subscriber, load_subscribers
 
 logger = logging.getLogger("manager_alert")
 ISRAEL_TZ = timezone(timedelta(hours=3))
@@ -53,6 +54,28 @@ def _build_area_reports(alerts: list) -> list[AreaReport]:
         if alert.is_night:
             areas[base].night_alerts.append(alert)
     return sorted(areas.values(), key=lambda r: r.total_count, reverse=True)
+
+
+def _send_subscriber_reports(
+    subscribers: list[Subscriber],
+    area_reports: list[AreaReport],
+    report_type: str,
+    dry_run: bool = False,
+) -> None:
+    """Send personalized reports to each subscriber."""
+    for sub in subscribers:
+        sub_text = build_subscriber_report(
+            area_reports,
+            subscriber_name=sub.name,
+            watched_cities=sub.cities,
+            report_type=report_type,
+        )
+        if dry_run:
+            print(f"\n--- Subscriber: {sub.name} ---")
+            send_webhook("", sub_text, dry_run=True)
+        else:
+            logger.info("Sending report to subscriber %s", sub.name)
+            send_webhook(sub.webhook_url, sub_text)
 
 
 def run_report(
@@ -112,6 +135,14 @@ def run_report(
             sys.exit(1)
         send_webhook(config["webhook_url"], report_text)
 
+    # Send personalized subscriber reports
+    try:
+        subscribers = load_subscribers()
+        if subscribers:
+            _send_subscriber_reports(subscribers, all_reports, report_type, dry_run=dry_run)
+    except Exception:
+        logger.exception("Subscriber reports failed")
+
     logger.info("Report cycle complete")
 
 
@@ -140,6 +171,15 @@ def main() -> None:
     # serve (replaces cron)
     sub.add_parser("serve", help="Run scheduler: collect every 10min, report daily at 13:00 IST")
 
+    # list-cities
+    sub.add_parser("list-cities", help="List all known city names for subscriber config")
+
+    # add-subscriber
+    add_sub_p = sub.add_parser("add-subscriber", help="Add a subscriber for personalized alerts")
+    add_sub_p.add_argument("--name", required=True, help="Subscriber name (e.g. 'Backend Team')")
+    add_sub_p.add_argument("--webhook-url", required=True, help="Slack webhook URL")
+    add_sub_p.add_argument("--cities", nargs="+", required=True, help="City names to watch")
+
     args = parser.parse_args()
     if not args.command:
         parser.print_help()
@@ -158,6 +198,18 @@ def main() -> None:
         cmd_collect(config)
     elif args.command == "report":
         run_report(config, dry_run=args.dry_run, live=args.live)
+    elif args.command == "list-cities":
+        from .city_names import CITY_REGIONS
+        for city in sorted(CITY_REGIONS):
+            print(f"  {city} ({CITY_REGIONS[city]})")
+    elif args.command == "add-subscriber":
+        from .city_names import CITY_REGIONS
+        unknown = [c for c in args.cities if c not in CITY_REGIONS]
+        if unknown:
+            print(f"Warning: unknown cities (will still be tracked): {', '.join(unknown)}")
+            print("Run 'list-cities' to see all known city names.")
+        add_subscriber(name=args.name, webhook_url=args.webhook_url, cities=args.cities)
+        print(f"Added subscriber '{args.name}' watching {len(args.cities)} cities.")
 
 
 if __name__ == "__main__":
