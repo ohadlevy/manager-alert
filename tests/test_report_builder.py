@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 from manager_alert.area_matcher import AreaReport
 from manager_alert.oref_client import Alert
-from manager_alert.report_builder import build_report
+from manager_alert.report_builder import build_report, build_subscriber_report
 
 ISRAEL_TZ = timezone(timedelta(hours=3))
 TEST_DATE = datetime(2026, 3, 26, 13, 0, tzinfo=ISRAEL_TZ)
@@ -100,3 +100,64 @@ class TestBuildReport:
         text = build_report(reports, report_date=TEST_DATE)
         assert "Elevated" in text
         assert "Ra'anana" in text
+
+
+class TestBuildSubscriberReport:
+    def test_filters_to_watched_cities(self):
+        reports = [
+            _make_area_report("Tel Aviv", [10, 14]),
+            _make_area_report("Haifa", [10]),
+            _make_area_report("Sderot", [10]),
+        ]
+        text = build_subscriber_report(
+            reports, subscriber_name="Ziv",
+            watched_cities=["Tel Aviv", "Haifa"], report_date=TEST_DATE,
+        )
+        assert text is not None
+        assert "Tel Aviv" in text
+        assert "Haifa" in text
+        assert "Sderot" not in text
+        assert "Ziv" in text
+
+    def test_returns_none_when_no_matching_cities(self):
+        reports = [_make_area_report("Sderot", [10])]
+        text = build_subscriber_report(
+            reports, subscriber_name="Ziv",
+            watched_cities=["Tel Aviv"], report_date=TEST_DATE,
+        )
+        assert text is None
+
+    def test_case_insensitive_matching(self):
+        reports = [_make_area_report("Tel Aviv", [10])]
+        text = build_subscriber_report(
+            reports, subscriber_name="Ziv",
+            watched_cities=["tel aviv"], report_date=TEST_DATE,
+        )
+        assert text is not None
+        assert "Tel Aviv" in text
+
+    def test_night_alerts_shown(self):
+        reports = [_make_area_report("Haifa", [2, 3])]
+        text = build_subscriber_report(
+            reports, subscriber_name="Ziv",
+            watched_cities=["Haifa"], report_date=TEST_DATE,
+        )
+        assert text is not None
+        assert "overnight" in text
+        assert "Haifa" in text
+
+    def test_report_type_in_title(self):
+        reports = [_make_area_report("Tel Aviv", [10])]
+        text = build_subscriber_report(
+            reports, subscriber_name="Ziv",
+            watched_cities=["Tel Aviv"], report_date=TEST_DATE,
+            report_type="overnight",
+        )
+        assert "Overnight" in text
+
+    def test_empty_area_reports(self):
+        text = build_subscriber_report(
+            [], subscriber_name="Ziv",
+            watched_cities=["Tel Aviv"], report_date=TEST_DATE,
+        )
+        assert text is None

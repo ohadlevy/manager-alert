@@ -19,8 +19,9 @@ from dotenv import load_dotenv
 from .area_matcher import AreaReport, extract_city_prefix
 from .collector import AlertStore, run_collect
 from .oref_client import fetch_alerts
-from .report_builder import build_report
+from .report_builder import build_report, build_subscriber_report
 from .slack_client import send_webhook
+from .subscribers import Subscriber, load_subscribers
 
 logger = logging.getLogger("manager_alert")
 ISRAEL_TZ = timezone(timedelta(hours=3))
@@ -53,6 +54,31 @@ def _build_area_reports(alerts: list) -> list[AreaReport]:
         if alert.is_night:
             areas[base].night_alerts.append(alert)
     return sorted(areas.values(), key=lambda r: r.total_count, reverse=True)
+
+
+def _send_subscriber_reports(
+    subscribers: list[Subscriber],
+    area_reports: list[AreaReport],
+    report_type: str,
+    dry_run: bool = False,
+) -> None:
+    """Send personalized reports to each subscriber."""
+    for sub in subscribers:
+        sub_text = build_subscriber_report(
+            area_reports,
+            subscriber_name=sub.name,
+            watched_cities=sub.cities,
+            report_type=report_type,
+        )
+        if sub_text is None:
+            logger.info("No alerts for subscriber %s, skipping", sub.name)
+            continue
+        if dry_run:
+            print(f"\n--- Subscriber: {sub.name} ---")
+            send_webhook("", sub_text, dry_run=True)
+        else:
+            logger.info("Sending report to subscriber %s", sub.name)
+            send_webhook(sub.webhook_url, sub_text)
 
 
 def run_report(
@@ -111,6 +137,14 @@ def run_report(
             logger.error("SLACK_WEBHOOK_URL not set")
             sys.exit(1)
         send_webhook(config["webhook_url"], report_text)
+
+    # Send personalized subscriber reports
+    try:
+        subscribers = load_subscribers()
+        if subscribers:
+            _send_subscriber_reports(subscribers, all_reports, report_type, dry_run=dry_run)
+    except Exception:
+        logger.exception("Subscriber reports failed")
 
     logger.info("Report cycle complete")
 

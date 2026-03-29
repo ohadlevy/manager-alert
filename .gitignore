@@ -4,4 +4,5 @@ __pycache__/
 .env
 .pytest_cache/
 data/alerts.db
+data/subscribers.json
 *.egg-info/

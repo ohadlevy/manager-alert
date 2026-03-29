@@ -103,6 +103,52 @@ python -m manager_alert report --dry-run     # preview without sending
 python -m manager_alert report --live        # fetch live from API (skip db)
 ```
 
+## Personalized City Alerts
+
+Individual users can subscribe to alerts for specific cities. Each subscriber gets a separate, filtered report alongside the general channel report — only when their watched cities have alerts.
+
+### Setup
+
+1. **Create a Slack workflow** for receiving your personal alerts:
+   - Go to **Automations** → create a new Workflow
+   - Set trigger to **"From a webhook"**
+   - Add a variable called `report` (type: text)
+   - Add step: **"Send a message to a channel"** → select a private channel (e.g., `#my-alerts`)
+   - Map `{{report}}` to the message body
+   - Publish and copy the webhook URL
+
+2. **Add yourself to `data/subscribers.json`**:
+   ```json
+   [
+     {
+       "name": "Your Name",
+       "webhook_url": "https://hooks.slack.com/triggers/...",
+       "cities": ["Tel Aviv", "Ra'anana", "Herzliya"]
+     }
+   ]
+   ```
+   See `data/subscribers.json.example` for a full example.
+
+3. **Available city names** can be found in `manager_alert/city_names.py`. Use the exact English names (e.g., `Ra'anana`, `Be'er Sheva`, `Kiryat Shmona`).
+
+### Personalized Report Example
+
+```
+🔔 Your Name's Daily Alert Update -- March 29, 2026
+11 sirens in your watched cities
+
+😴 5 sirens overnight (22:00-07:00)
+  Tel Aviv 3x · Ra'anana 2x
+
+Tel Aviv (Central Israel): 6 sirens [02:15–14:30]
+Ra'anana (Central Israel): 3 sirens [03:00–11:45]
+Herzliya (Central Israel): 2 sirens [10:00–14:00]
+
+Full alert map | Source: Pikud HaOref
+```
+
+When none of your watched cities have alerts, no message is sent.
+
 ## Container (Podman Compose)
 
 ```bash
@@ -134,19 +180,22 @@ The container must run from an Israeli IP (oref API is geo-restricted).
 ## Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│  Container (UBI9 + Python 3.12)         │
-│                                         │
-│  scheduler (python process)             │
-│    every 10min → collect                │
-│                  └ oref API → SQLite    │
-│    12:00 IST  → overnight report        │
-│    22:00 IST  → daytime report          │
-│                  └ SQLite → report text │
-│                    └ POST → Slack       │
-│                                         │
-│  data/alerts.db        (24h history)    │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│  Container (UBI9 + Python 3.12)              │
+│                                              │
+│  scheduler (python process)                  │
+│    every 10min → collect                     │
+│                  └ oref API → SQLite         │
+│    12:00 IST  → overnight report             │
+│    22:00 IST  → daytime report               │
+│                  └ SQLite → report text      │
+│                    ├ POST → Slack channel     │
+│                    └ POST → subscriber DMs   │
+│                      (filtered by city)      │
+│                                              │
+│  data/alerts.db          (24h history)       │
+│  data/subscribers.json   (city watchlists)   │
+└──────────────────────────────────────────────┘
 ```
 
 ## How It Works
