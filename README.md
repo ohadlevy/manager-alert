@@ -101,6 +101,11 @@ python -m manager_alert collect              # poll oref API, store in SQLite
 python -m manager_alert report               # send daily report
 python -m manager_alert report --dry-run     # preview without sending
 python -m manager_alert report --live        # fetch live from API (skip db)
+python -m manager_alert list-cities          # list all known city names
+python -m manager_alert add-subscriber \     # add a subscriber
+  --name "Backend Team" \
+  --webhook-url "https://hooks.slack.com/triggers/..." \
+  --cities "Tel Aviv" "Ra'anana" "Herzliya"
 ```
 
 ## Personalized City Alerts
@@ -117,19 +122,23 @@ Individual users can subscribe to alerts for specific cities. Each subscriber ge
    - Map `{{report}}` to the message body
    - Publish and copy the webhook URL
 
-2. **Add yourself to `data/subscribers.json`**:
-   ```json
-   [
-     {
-       "name": "Your Name",
-       "webhook_url": "https://hooks.slack.com/triggers/...",
-       "cities": ["Tel Aviv", "Ra'anana", "Herzliya"]
-     }
-   ]
+2. **List available cities** and **add yourself** via CLI:
+   ```bash
+   python -m manager_alert list-cities
+   python -m manager_alert add-subscriber \
+     --name "Your Name" \
+     --webhook-url "https://hooks.slack.com/triggers/..." \
+     --cities "Tel Aviv" "Ra'anana" "Herzliya"
    ```
-   See `data/subscribers.json.example` for a full example.
-
-3. **Available city names** can be found in `manager_alert/city_names.py`. Use the exact English names (e.g., `Ra'anana`, `Be'er Sheva`, `Kiryat Shmona`).
+   Or in a container:
+   ```bash
+   podman compose exec manager-alert python -m manager_alert list-cities
+   podman compose exec manager-alert python -m manager_alert add-subscriber \
+     --name "Your Name" \
+     --webhook-url "https://hooks.slack.com/triggers/..." \
+     --cities "Tel Aviv" "Ra'anana" "Herzliya"
+   ```
+   You can also edit `data/subscribers.json` directly (see `data/subscribers.json.example`).
 
 ### Personalized Report Example
 

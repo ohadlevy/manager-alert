@@ -119,13 +119,14 @@ class TestBuildSubscriberReport:
         assert "Sderot" not in text
         assert "Ziv" in text
 
-    def test_returns_none_when_no_matching_cities(self):
+    def test_all_clear_when_no_matching_cities(self):
         reports = [_make_area_report("Sderot", [10])]
         text = build_subscriber_report(
             reports, subscriber_name="Ziv",
             watched_cities=["Tel Aviv"], report_date=TEST_DATE,
         )
-        assert text is None
+        assert "All clear" in text
+        assert "Ziv" in text
 
     def test_case_insensitive_matching(self):
         reports = [_make_area_report("Tel Aviv", [10])]
@@ -155,9 +156,9 @@ class TestBuildSubscriberReport:
         )
         assert "Overnight" in text
 
-    def test_empty_area_reports(self):
+    def test_empty_area_reports_sends_all_clear(self):
         text = build_subscriber_report(
             [], subscriber_name="Ziv",
             watched_cities=["Tel Aviv"], report_date=TEST_DATE,
         )
-        assert text is None
+        assert "All clear" in text

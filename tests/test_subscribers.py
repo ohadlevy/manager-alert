@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from manager_alert.subscribers import Subscriber, load_subscribers
+from manager_alert.subscribers import Subscriber, add_subscriber, load_subscribers
 
 
 class TestLoadSubscribers:
@@ -64,3 +64,30 @@ class TestLoadSubscribers:
         ]))
         result = load_subscribers(path)
         assert result == []
+
+
+class TestAddSubscriber:
+    def test_creates_new_file(self, tmp_path):
+        path = tmp_path / "subs.json"
+        add_subscriber("Alice", "https://hooks.example.com/1", ["Haifa"], path=path)
+        result = load_subscribers(path)
+        assert len(result) == 1
+        assert result[0].name == "Alice"
+        assert result[0].cities == ["Haifa"]
+
+    def test_appends_to_existing(self, tmp_path):
+        path = tmp_path / "subs.json"
+        path.write_text(json.dumps([
+            {"name": "Alice", "webhook_url": "https://hooks.example.com/1", "cities": ["Haifa"]},
+        ]))
+        add_subscriber("Bob", "https://hooks.example.com/2", ["Tel Aviv"], path=path)
+        result = load_subscribers(path)
+        assert len(result) == 2
+        assert result[1].name == "Bob"
+
+    def test_handles_corrupt_file(self, tmp_path):
+        path = tmp_path / "subs.json"
+        path.write_text("not json")
+        add_subscriber("Alice", "https://hooks.example.com/1", ["Haifa"], path=path)
+        result = load_subscribers(path)
+        assert len(result) == 1

@@ -52,3 +52,32 @@ def load_subscribers(path: Path | str = DEFAULT_SUBSCRIBERS_FILE) -> list[Subscr
 
     logger.info("Loaded %d subscriber(s)", len(subscribers))
     return subscribers
+
+
+def add_subscriber(
+    name: str,
+    webhook_url: str,
+    cities: list[str],
+    path: Path | str = DEFAULT_SUBSCRIBERS_FILE,
+) -> None:
+    """Add a subscriber to the JSON file. Creates the file if it doesn't exist."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    existing = []
+    if path.exists():
+        try:
+            data = json.loads(path.read_text())
+            if isinstance(data, list):
+                existing = data
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    existing.append({
+        "name": name,
+        "webhook_url": webhook_url,
+        "cities": cities,
+    })
+
+    path.write_text(json.dumps(existing, indent=2, ensure_ascii=False) + "\n")
+    logger.info("Added subscriber %r with %d cities", name, len(cities))

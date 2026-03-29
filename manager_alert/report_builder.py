@@ -151,9 +151,6 @@ def build_subscriber_report(
     watched_set = {c.lower() for c in watched_cities}
     filtered = [r for r in area_reports if r.area_name.lower() in watched_set]
 
-    if not filtered:
-        return None
-
     date_str = report_date.strftime("%B %d, %Y")
     lines: list[str] = []
 
@@ -163,6 +160,10 @@ def build_subscriber_report(
         "daily": f"*:bell: {subscriber_name}'s Daily Alert Update -- {date_str}*",
     }
     lines.append(titles.get(report_type, titles["daily"]))
+
+    if not filtered:
+        lines.append(":coffee: All clear — no alerts in your watched cities.")
+        return "\n".join(lines)
 
     total_alerts = sum(r.total_count for r in filtered)
     total_night = sum(r.night_count for r in filtered)
