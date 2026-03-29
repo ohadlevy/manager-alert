@@ -11,7 +11,8 @@ ISRAEL_TZ = timezone(timedelta(hours=3))
 
 
 def _make_alert(area: str = "חיפה", hour: int = 12, category: int = 1) -> Alert:
-    ts = datetime(2026, 3, 26, hour, 0, tzinfo=ISRAEL_TZ)
+    now = datetime.now(ISRAEL_TZ)
+    ts = now.replace(hour=hour, minute=0, second=0, microsecond=0)
     return Alert(
         area=area, timestamp=ts, category=category,
         category_desc="Missiles", is_night=hour >= 22 or hour < 7,
@@ -45,7 +46,7 @@ class TestAlertStore:
     def test_prune(self):
         old_alert = Alert(
             area="old", category=1, category_desc="Missiles", is_night=False,
-            timestamp=datetime(2026, 3, 20, 12, 0, tzinfo=ISRAEL_TZ),
+            timestamp=datetime.now(ISRAEL_TZ) - timedelta(days=10),
         )
         new_alert = _make_alert("new", 12)
         self.store.store([old_alert, new_alert])
@@ -56,7 +57,7 @@ class TestAlertStore:
     def test_get_alerts_respects_lookback(self):
         old = Alert(
             area="old", category=1, category_desc="Missiles", is_night=False,
-            timestamp=datetime(2026, 3, 20, 12, 0, tzinfo=ISRAEL_TZ),
+            timestamp=datetime.now(ISRAEL_TZ) - timedelta(days=10),
         )
         new = _make_alert("new", 12)
         self.store.store([old, new])
