@@ -76,12 +76,24 @@ def run_loop(config: dict) -> None:
 
         # Check each scheduled report
         for utc_hour, report_type, state_key in REPORT_SCHEDULE:
-            if now_utc.hour >= utc_hour and last_sent[state_key] != today:
+            if now_utc.hour >= utc_hour:
+                if last_sent[state_key] == today:
+                    continue
+                # Double-check DB state in case it was updated by another process
+                db_state = store.get_state(state_key)
+                if db_state == today:
+                    logger.info("Skipping %s report — already sent today (db=%s)",
+                                report_type, db_state)
+                    last_sent[state_key] = today
+                    continue
                 try:
-                    logger.info("Sending %s report...", report_type)
+                    logger.info("Triggering %s report (utc_hour=%d, last_sent=%s)",
+                                report_type, utc_hour, last_sent[state_key])
                     run_report(config, report_type=report_type)
                     last_sent[state_key] = today
                     store.set_state(state_key, today)
+                    logger.info("Completed %s report, state saved for %s",
+                                report_type, today)
                 except Exception:
                     logger.exception("%s report failed", report_type)
 

@@ -163,6 +163,8 @@ def run_report(
             logger.error("SLACK_WEBHOOK_URL not set")
             sys.exit(1)
         send_webhook(config["webhook_url"], report_text)
+        logger.info("Sent broadcast %s report (%d alerts, %d areas)",
+                     report_type, len(alerts), len(all_reports))
 
     # Send personalized subscriber reports
     try:
@@ -195,7 +197,7 @@ def main() -> None:
     report_p.add_argument("--live", action="store_true", help="Fetch live from API instead of database")
 
     # serve (replaces cron)
-    sub.add_parser("serve", help="Run scheduler: collect every 10min, report daily at 13:00 IST")
+    sub.add_parser("serve", help="Run scheduler: collect every 10min, reports at 12:00 and 22:00 IST")
 
     # list-cities
     sub.add_parser("list-cities", help="List all known city names for subscriber config")

@@ -96,7 +96,7 @@ All settings via environment variables (see `.env.example`):
 ## Commands
 
 ```bash
-python -m manager_alert serve                # run scheduler (collect + daily report)
+python -m manager_alert serve                # run scheduler (collect + reports at 12:00/22:00 IST)
 python -m manager_alert collect              # poll oref API, store in SQLite
 python -m manager_alert report               # send daily report
 python -m manager_alert report --dry-run     # preview without sending
